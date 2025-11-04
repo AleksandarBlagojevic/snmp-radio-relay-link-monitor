@@ -8,6 +8,7 @@ NEDOSTUPNI="nedostupni_neo_$VREME.txt"
 NEDOSTUPNINEO="nedostupni_v4_$VREME.txt"
 NEDOSTUPNIV4="nedostupni_$VREME.txt"
 REZULTAT="rezultat_$VREME.txt"
+OUTPUT_FILE="topologija_$VREME.csv"
 # Pravim te fajlove na pocetku
 touch $NECLOG
 touch $NEDOSTUPNI
@@ -91,9 +92,10 @@ NEOEQUIPMENTTYPE=1.3.6.1.4.1.119.2.3.69.3.1.1.7.0
 # V4
 V4HOSTNAME=1.3.6.1.4.1.119.2.3.69.1.1.1.0
 
-COMMUNITY_IPSO=necnms
-COMMUNITY=public
+#COMMUNITY_IPSO=
+#COMMUNITY=
 
+echo "==============================" >> $REZULTAT
 # Prolazimo kroz sve IP adrese
 for ip in "${ip_array[@]}"; do
     make_log "============================================================"
@@ -220,4 +222,519 @@ for ip in "${ip_nedostupneneo[@]}"; do
 done
 make_log "Zavrsena skripta prozivanja uredjaja"
 make_log "Pravim CSV file"
+
+
+
+# Obrisi prethodni rezultat ako postoji i dodaj header
+echo "IP, Hostname, Element type, MODEM, MODEM name, ETH, ETH name, VLAN ID, VLAN name, MODEM cross, MODEM VLANID cross, ETH cross, ETH VLANID cross, ETH VLANID1" > "$OUTPUT_FILE"
+awk '
+BEGIN { FS="\n"; RS="=============================="; OFS=";" }
+
+# Za svaki blok
+{
+    # Preskoci prazne blokove
+    if (length($0) == 0) {next}
+    ip = ""; hostname = ""; type = ""; type_name = ""
+
+    # Uzmi liniju koja sadrzi IP i ime
+    if (match($2, /\[[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\][ \t]+"[^"]+"/)) {
+        line = substr($2, RSTART, RLENGTH)
+
+        # Izvuci IP
+        if (match(line, /\[[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\]/)) {
+            ip = substr(line, RSTART+1, RLENGTH-2)  # +1 i -2 da se sklone zagrade
+        }
+
+        # Izvuci ime
+        if (match(line, /"[^"]+"/)) {
+            hostname = substr(line, RSTART+1, RLENGTH-2) # ukloni navodnike
+        }
+
+    }
+
+    # Sledeca linija $3 je type
+    type = $3
+    if (type == "100") {
+        type_name = "PASOLINK NEO"
+    } else if (type == "520") {
+        type_name = "iPASOLINK EX"
+    } else if (type == "1000") {
+        type_name = "iPASOLINK 1000" 
+    } else if (type == "210") {
+        type_name = "iPASOLINK 200"
+    } else if (type == "400") {
+        type_name = "iPASOLINK 400"
+    } else if (type == "200") {
+        type_name = "iPASOLINK 200"
+    } else if (type == "10520") {
+        type_name = "iPASOLINK EX/A"
+    } else if (type == "10400") {
+        type_name = "iPASOLINK VR4"
+    } else if (type == "10200") {
+        type_name = "iPASOLINK V2"
+    } else if (type == "11000") {
+        type_name = "iPASOLINK VR10"
+    } else {
+        type_name = "PASOLINK V4"
+    }
+
+    print ip "," hostname "," type_name ",,,,,,,,,,,"
+
+    
+
+    line = $7
+    while(match(line, /\.([0-9]+)[ ]*=[ ]*STRING:[ ]*"([^"]+)"/, m)) {
+        modem = m[1]
+        modem_name = m[2]
+
+        if (modem == "16842752") {
+            modem_num = "MODEM 1"
+        } else if (modem == "25231360") {
+            modem_num = "MODEM 2"
+        } else if (modem == "33619968") {
+            modem_num = "MODEM 3"
+        } else if (modem == "42008576") {
+            modem_num = "MODEM 4"
+        } else if (modem == "50397184") {
+            modem_num = "MODEM 5"
+        } else if (modem == "58785792") {
+            modem_num = "MODEM 6"
+        } else if (modem == "67174400") {
+            modem_num = "MODEM 7"
+        } else if (modem == "75563008") {
+            modem_num = "MODEM 8"
+        } else if (modem == "100728832") {
+            modem_num = "MODEM 11"
+        } else if (modem == "109117440") {
+            modem_num = "MODEM 12"
+        } else if (modem == "117506048") {
+            modem_num = "MODEM 13"
+        } else {
+            modem_num = modem
+        }
+
+        print ip "," hostname "," type_name "," modem_num "," modem_name ",,,,,,,,,"
+
+        line = substr(line, RSTART + RLENGTH)
+
+
+    }
+
+    line = $7
+    while(match(line, /\.([0-9]+)[ ]*=[ ]*"([^"]+)"/, m)) {
+        modem = m[1]
+        modem_name = m[2]
+
+        if (modem == "16842752") {
+            modem_num = "MODEM 1"
+        } else if (modem == "25231360") {
+            modem_num = "MODEM 2"
+        } else if (modem == "33619968") {
+            modem_num = "MODEM 3"
+        } else if (modem == "42008576") {
+            modem_num = "MODEM 4"
+        } else if (modem == "50397184") {
+            modem_num = "MODEM 5"
+        } else if (modem == "58785792") {
+            modem_num = "MODEM 6"
+        } else if (modem == "67174400") {
+            modem_num = "MODEM 7"
+        } else if (modem == "75563008") {
+            modem_num = "MODEM 8"
+        } else if (modem == "100728832") {
+            modem_num = "MODEM 11"
+        } else if (modem == "109117440") {
+            modem_num = "MODEM 12"
+        } else if (modem == "117506048") {
+            modem_num = "MODEM 13"
+        } else {
+            modem_num = modem
+        }
+
+        print ip "," hostname "," type_name "," modem_num "," modem_name ",,,,,,,,,"
+
+        line = substr(line, RSTART + RLENGTH)
+
+
+    }
+
+    # ODAVDE ZA ETH
+    line = $9
+    #print line
+    while (match(line, /\.([0-9]+)[ ]*=[ ]*STRING:[ ]*"([^"]+)"/, m)) {
+        eth_id = m[1]
+        eth_name = m[2]
+
+        if (eth_id == "8454144") {
+            eth_num = "ETH 1"
+        } else if (eth_id == "142671872") {
+            eth_num = "ETH 1"
+        } else if (eth_id == "83951616") {
+            eth_num = "ETH 1"
+        }  else if (eth_id == "8519680") {
+            eth_num = "ETH 2"
+        } else if (eth_id == "142737408") {
+            eth_num = "ETH 2"
+        }  else if (eth_id == "84017152") {
+            eth_num = "ETH 2"
+        } else if (eth_id == "8585216") {
+            eth_num = "ETH 3"
+        }  else if (eth_id == "142802944") {
+            eth_num = "ETH 3"
+        } else if (eth_id == "84082688") {
+            eth_num = "ETH 3"
+        }  else if (eth_id == "8650752") {
+            eth_num = "ETH 4"
+        } else if (eth_id == "142868480") {
+            eth_num = "ETH 4"
+        }  else if (eth_id == "84148224") {
+            eth_num = "ETH 4"
+        } else if (eth_id == "8716288") {
+            eth_num = "ETH 5"
+        }  else if (eth_id == "142934016") {
+            eth_num = "ETH 5"
+        } else if (eth_id == "8781824") {
+            eth_num = "ETH 6"
+        }  else if (eth_id == "142999552") {
+            eth_num = "ETH 6"
+        } else if (eth_id == "143065088") {
+            eth_num = "ETH 7"
+        } else if (eth_id == "143130624") {
+            eth_num = "ETH 8"
+        } else {
+            eth_num = eth_id
+        }
+
+        # ukloni STRING: i navodnike ako ih ima
+        #gsub(/^STRING: */, "", vrednost)
+        #gsub(/^"|"$/, "", vrednost)
+
+        print ip "," hostname "," type_name ",,," eth_num "," eth_name ",,,,,,,"
+
+        # odseci deo koji je vec pronadjen da bi nastavili dalje
+        line = substr(line, RSTART + RLENGTH)
+    }
+
+    line = $9
+    #print line
+    while (match(line, /\.([0-9]+)[ ]*=[ ]*"([^"]+)"/, m)) {
+        eth_id = m[1]
+        eth_name = m[2]
+
+        if (eth_id == "8454144") {
+            eth_num = "ETH 1"
+        } else if (eth_id == "142671872") {
+            eth_num = "ETH 1"
+        } else if (eth_id == "83951616") {
+            eth_num = "ETH 1"
+        }  else if (eth_id == "8519680") {
+            eth_num = "ETH 2"
+        } else if (eth_id == "142737408") {
+            eth_num = "ETH 2"
+        }  else if (eth_id == "84017152") {
+            eth_num = "ETH 2"
+        } else if (eth_id == "8585216") {
+            eth_num = "ETH 3"
+        }  else if (eth_id == "142802944") {
+            eth_num = "ETH 3"
+        } else if (eth_id == "84082688") {
+            eth_num = "ETH 3"
+        }  else if (eth_id == "8650752") {
+            eth_num = "ETH 4"
+        } else if (eth_id == "142868480") {
+            eth_num = "ETH 4"
+        }  else if (eth_id == "84148224") {
+            eth_num = "ETH 4"
+        } else if (eth_id == "8716288") {
+            eth_num = "ETH 5"
+        }  else if (eth_id == "142934016") {
+            eth_num = "ETH 5"
+        } else if (eth_id == "8781824") {
+            eth_num = "ETH 6"
+        }  else if (eth_id == "142999552") {
+            eth_num = "ETH 6"
+        } else if (eth_id == "143065088") {
+            eth_num = "ETH 7"
+        } else if (eth_id == "143130624") {
+            eth_num = "ETH 8"
+        } else {
+            eth_num = eth_id
+        }
+
+        # ukloni STRING: i navodnike ako ih ima
+        #gsub(/^STRING: */, "", vrednost)
+        #gsub(/^"|"$/, "", vrednost)
+
+        print ip "," hostname "," type_name ",,," eth_num "," eth_name ",,,,,,,"
+
+        # odseci deo koji je vec pronadjen da bi nastavili dalje
+        line = substr(line, RSTART + RLENGTH)
+    }
+
+
+
+
+    line = $5
+    #print line
+    while (match(line, /\.([0-9]+)[ ]*=[ ]*STRING:[ ]*"([^"]+)"/, m)) {
+        vlan_id = m[1]
+        vlan_name = m[2]
+
+        # ukloni STRING: i navodnike ako ih ima
+        #gsub(/^STRING: */, "", vrednost)
+        #gsub(/^"|"$/, "", vrednost)
+
+        print ip "," hostname "," type_name ",,,,," vlan_id "," vlan_name ",,,,,"
+
+        # odseci deo koji je vec pronadjen da bi nastavili dalje
+        line = substr(line, RSTART + RLENGTH)
+    }
+
+    line = $5
+    #print line
+    while (match(line, /\.([0-9]+)[ ]*=[ ]*"([^"]*)"/, m)) {
+        vlan_id = m[1]
+        vlan_name = m[2]
+
+        print ip "," hostname "," type_name ",,,,," vlan_id "," vlan_name ",,,,,"
+
+        # odseci deo koji je vec pronadjen da bi nastavili dalje
+        line = substr(line, RSTART + RLENGTH)
+    }
+
+    line = $11
+    while (match(line, /4\.([0-9]+)\.([0-9]+)[ ]*=[ ]*/, m)) {
+        eth_modem = m[1]
+        vlan_id = m[2]
+
+        if (eth_modem == "16842752") {
+            name = "MODEM 1"
+        } else if (eth_modem == "25231360") {
+            name = "MODEM 2"
+        } else if (eth_modem == "33619968") {
+            name = "MODEM 3"
+        } else if (eth_modem == "42008576") {
+            name = "MODEM 4"
+        } else if (eth_modem == "50397184") {
+            name = "MODEM 5"
+        } else if (eth_modem == "58785792") {
+            name = "MODEM 6"
+        } else if (eth_modem == "67174400") {
+            name = "MODEM 7"
+        } else if (eth_modem == "75563008") {
+            name = "MODEM 8"
+        } else if (eth_modem == "100728832") {
+            name = "MODEM 11"
+        } else if (eth_modem == "109117440") {
+            name = "MODEM 12"
+        } else if (eth_modem == "117506048") {
+            name = "MODEM 13"
+        } else if (eth_modem == "8454144") {
+            name = "ETH 1"
+        } else if (eth_modem == "142671872") {
+            name = "ETH 1"
+        } else if (eth_modem == "83951616") {
+            name = "ETH 1"
+        }  else if (eth_modem == "8519680") {
+            name = "ETH 2"
+        } else if (eth_modem == "142737408") {
+            name = "ETH 2"
+        }  else if (eth_modem == "84017152") {
+            name = "ETH 2"
+        } else if (eth_modem == "8585216") {
+            name = "ETH 3"
+        }  else if (eth_modem == "142802944") {
+            name = "ETH 3"
+        } else if (eth_modem == "84082688") {
+            name = "ETH 3"
+        }  else if (eth_modem == "8650752") {
+            name = "ETH 4"
+        } else if (eth_modem == "142868480") {
+            name = "ETH 4"
+        }  else if (eth_modem == "84148224") {
+            name = "ETH 4"
+        } else if (eth_modem == "8716288") {
+            name = "ETH 5"
+        }  else if (eth_modem == "142934016") {
+            name = "ETH 5"
+        } else if (eth_modem == "8781824") {
+            name = "ETH 6"
+        }  else if (eth_modem == "142999552") {
+            name = "ETH 6"
+        } else if (eth_modem == "143065088") {
+            name = "ETH 7"
+        } else if (eth_modem == "143130624") {
+            name = "ETH 8"
+        } else {
+            name = eth_modem
+        }        
+
+        print ip "," hostname "," type_name ",,,,,,," name "," vlan_id ",,,"
+
+        # odseci deo koji je vec pronadjen da bi nastavili dalje
+        line = substr(line, RSTART + RLENGTH)
+    }
+
+    
+
+    line = $13
+    while (match(line, /4\.([0-9]+)\.([0-9]+)[ ]*=[ ]*/, m)) {
+        eth_modem = m[1]
+        vlan_id = m[2]
+
+        if (eth_modem == "16842752") {
+            name = "MODEM 1"
+        } else if (eth_modem == "25231360") {
+            name = "MODEM 2"
+        } else if (eth_modem == "33619968") {
+            name = "MODEM 3"
+        } else if (eth_modem == "42008576") {
+            name = "MODEM 4"
+        } else if (eth_modem == "50397184") {
+            name = "MODEM 5"
+        } else if (eth_modem == "58785792") {
+            name = "MODEM 6"
+        } else if (eth_modem == "67174400") {
+            name = "MODEM 7"
+        } else if (eth_modem == "75563008") {
+            name = "MODEM 8"
+        } else if (eth_modem == "100728832") {
+            name = "MODEM 11"
+        } else if (eth_modem == "109117440") {
+            name = "MODEM 12"
+        } else if (eth_modem == "117506048") {
+            name = "MODEM 13"
+        } else if (eth_modem == "8454144") {
+            name = "ETH 1"
+        } else if (eth_modem == "142671872") {
+            name = "ETH 1"
+        } else if (eth_modem == "83951616") {
+            name = "ETH 1"
+        }  else if (eth_modem == "8519680") {
+            name = "ETH 2"
+        } else if (eth_modem == "142737408") {
+            name = "ETH 2"
+        }  else if (eth_modem == "84017152") {
+            name = "ETH 2"
+        } else if (eth_modem == "8585216") {
+            name = "ETH 3"
+        }  else if (eth_modem == "142802944") {
+            name = "ETH 3"
+        } else if (eth_modem == "84082688") {
+            name = "ETH 3"
+        }  else if (eth_modem == "8650752") {
+            name = "ETH 4"
+        } else if (eth_modem == "142868480") {
+            name = "ETH 4"
+        }  else if (eth_modem == "84148224") {
+            name = "ETH 4"
+        } else if (eth_modem == "8716288") {
+            name = "ETH 5"
+        }  else if (eth_modem == "142934016") {
+            name = "ETH 5"
+        } else if (eth_modem == "8781824") {
+            name = "ETH 6"
+        }  else if (eth_modem == "142999552") {
+            name = "ETH 6"
+        } else if (eth_modem == "143065088") {
+            name = "ETH 7"
+        } else if (eth_modem == "143130624") {
+            name = "ETH 8"
+        } else {
+            name = eth_modem
+        }        
+
+        print ip "," hostname "," type_name ",,,,,,," name "," vlan_id ",,,"
+
+        # odseci deo koji je vec pronadjen da bi nastavili dalje
+        line = substr(line, RSTART + RLENGTH)
+    }
+
+    
+
+    line = $15
+    while (match(line, /5\.([0-9]+)\.([0-9]+)\.([0-9]+)[ ]*=[ ]*/, m)) {
+        eth_modem = m[1]
+        vlan_id = m[2]
+        vlan_tag = m[3]
+
+        if (eth_modem == "16842752") {
+            name = "MODEM 1"
+        } else if (eth_modem == "25231360") {
+            name = "MODEM 2"
+        } else if (eth_modem == "33619968") {
+            name = "MODEM 3"
+        } else if (eth_modem == "42008576") {
+            name = "MODEM 4"
+        } else if (eth_modem == "50397184") {
+            name = "MODEM 5"
+        } else if (eth_modem == "58785792") {
+            name = "MODEM 6"
+        } else if (eth_modem == "67174400") {
+            name = "MODEM 7"
+        } else if (eth_modem == "75563008") {
+            name = "MODEM 8"
+        } else if (eth_modem == "100728832") {
+            name = "MODEM 11"
+        } else if (eth_modem == "109117440") {
+            name = "MODEM 12"
+        } else if (eth_modem == "117506048") {
+            name = "MODEM 13"
+        } else if (eth_modem == "8454144") {
+            name = "ETH 1"
+        } else if (eth_modem == "142671872") {
+            name = "ETH 1"
+        } else if (eth_modem == "83951616") {
+            name = "ETH 1"
+        }  else if (eth_modem == "8519680") {
+            name = "ETH 2"
+        } else if (eth_modem == "142737408") {
+            name = "ETH 2"
+        }  else if (eth_modem == "84017152") {
+            name = "ETH 2"
+        } else if (eth_modem == "8585216") {
+            name = "ETH 3"
+        }  else if (eth_modem == "142802944") {
+            name = "ETH 3"
+        } else if (eth_modem == "84082688") {
+            name = "ETH 3"
+        }  else if (eth_modem == "8650752") {
+            name = "ETH 4"
+        } else if (eth_modem == "142868480") {
+            name = "ETH 4"
+        }  else if (eth_modem == "84148224") {
+            name = "ETH 4"
+        } else if (eth_modem == "8716288") {
+            name = "ETH 5"
+        }  else if (eth_modem == "142934016") {
+            name = "ETH 5"
+        } else if (eth_modem == "8781824") {
+            name = "ETH 6"
+        }  else if (eth_modem == "142999552") {
+            name = "ETH 6"
+        } else if (eth_modem == "143065088") {
+            name = "ETH 7"
+        } else if (eth_modem == "143130624") {
+            name = "ETH 8"
+        } else {
+            name = eth_modem
+        }        
+
+        print ip "," hostname "," type_name ",,,,,,,,," name "," vlan_id "," vlan_tag
+
+        # odseci deo koji je vec pronadjen da bi nastavili dalje
+        line = substr(line, RSTART + RLENGTH)
+    }
+
+
+   
+    
+}
+' $REZULTAT >> $OUTPUT_FILE
+
+
+
+make_log "CSV generisan: $OUTPUT_FILE"
+
+make_log "ZAVRSENA SKRIPTA "
 echo "ZAVRSENA SKRIPTA "

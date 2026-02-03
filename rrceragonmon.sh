@@ -6,11 +6,12 @@ VREME=$(date '+%Y%m%d_%H%M')
 CERLOG="cer_info_$VREME.log"
 NEDOSTUPNI="nedostupni_$VREME.txt"
 REZULTAT="rezultat_$VREME.txt"
-#OUTPUT_FILE="topologija_$VREME.csv"
+OUTPUT_FILE="topologija_$VREME.csv"
 # Pravim te fajlove na pocetku
 touch $CERLOG
 touch $NEDOSTUPNI
 touch $REZULTAT
+touch $OUTPUT_FILE
 
 # Funkcija koja pravi log u formatu "[datum_vreme] poruka"
 make_log() {
@@ -126,18 +127,38 @@ for idx in "${!ip_array[@]}"; do
     
     TYPE=$(get_cell "$idx" 6)
     echo $TYPE >> $REZULTAT
-    INTERFACESLIST=$(snmp_call "walk" 2c $COMMUNITY $ip $INTERFACES $HOSTNAME "Physical Interfaces ifAlias")
-    echo "----- Physical Interfaces ifAlias ----- " >> $REZULTAT
-    echo $INTERFACESLIST >> $REZULTAT
-    SERVICESLIST=$(snmp_call "walk" 2c $COMMUNITY $ip $SERVICES $HOSTNAME "Ethernet and TDM services")
-    echo "----- Ethernet and TDM services ----- " >> $REZULTAT
-    echo $SERVICESLIST >> $REZULTAT
-    CONFIGURATIONLIST=$(snmp_call "walk" 2c $COMMUNITY $ip $CONFIGURATION $HOSTNAME "Chassis configuration")
-    echo "----- Chassis configuration ----- " >> $REZULTAT
-    echo $CONFIGURATIONLIST >> $REZULTAT
-    IPLIST=$(snmp_call "walk" 2c $COMMUNITY $ip $IPADDRESS $HOSTNAME "Remote IP address")
-    echo "----- Remote IP address ----- " >> $REZULTAT
-    echo $IPLIST >> $REZULTAT
+    if [[ "$TYPE" != "Evolution" ]]; then
+        INTERFACESLIST=$(snmp_call "walk" 2c $COMMUNITY $ip $INTERFACES $HOSTNAME "Physical Interfaces ifAlias")
+        echo "----- Physical Interfaces ifAlias ----- " >> $REZULTAT
+        echo $INTERFACESLIST >> $REZULTAT
+    else
+        echo "----- Physical Interfaces ifAlias ----- " >> $REZULTAT
+        echo "$INTERFACES = No Such Object available on this agent at this OID" >> $REZULTAT
+    fi
+    if [[ "$TYPE" != "Evolution" ]]; then
+        SERVICESLIST=$(snmp_call "walk" 2c $COMMUNITY $ip $SERVICES $HOSTNAME "Ethernet and TDM services")
+        echo "----- Ethernet and TDM services ----- " >> $REZULTAT
+        echo $SERVICESLIST >> $REZULTAT
+    else
+        echo "----- Ethernet and TDM services ----- " >> $REZULTAT
+        echo "$SERVICES = No Such Object available on this agent at this OID" >> $REZULTAT
+    fi
+    if [[ "$TYPE" != "Evolution" && "$TYPE" != "IP-50C" ]]; then
+        CONFIGURATIONLIST=$(snmp_call "walk" 2c $COMMUNITY $ip $CONFIGURATION $HOSTNAME "Chassis configuration")
+        echo "----- Chassis configuration ----- " >> $REZULTAT
+        echo $CONFIGURATIONLIST >> $REZULTAT
+    else
+        echo "----- Chassis configuration ----- " >> $REZULTAT
+        echo "$CONFIGURATION = No Such Object available on this agent at this OID" >> $REZULTAT
+    fi
+    if [[ "$TYPE" != "Evolution" ]]; then
+        IPLIST=$(snmp_call "walk" 2c $COMMUNITY $ip $IPADDRESS $HOSTNAME "Remote IP address")
+        echo "----- Remote IP address ----- " >> $REZULTAT
+        echo $IPLIST >> $REZULTAT
+    else
+        echo "----- Remote IP address ----- " >> $REZULTAT
+        echo "$IPADDRESS = No Such Object available on this agent at this OID" >> $REZULTAT
+    fi
     end_time=$(date +%s.%N)
     time_sum=$(awk -v s="$start_host" -v e="$end_time" 'BEGIN {printf "%.3f", e - s}')
     
@@ -148,4 +169,162 @@ for idx in "${!ip_array[@]}"; do
     make_log "=============================="
 done
 
+# Obrisi prethodni rezultat ako postoji i dodaj header
+echo "IP, Hostname, Element type, Physical Interfaces, Physical Interfaces Description, Ethernet and TDM services, Ethernet and TDM services Description, Chassis configuration, Chassis configuration Description, Remote IP address, Remote IP address Description" > "$OUTPUT_FILE"
+awk '
+BEGIN { 
+    FS="\n"; 
+    RS="=============================="; 
+    OFS=";" 
+    
+    ### --- MAPA PHYSICAL INTERFACES ---
+    name_phy_int["268443713"] = "Ethernet: Slot 1 Port 1"
+    name_phy_int["268443714"] = "Ethernet: Slot 1 Port 2"
+    name_phy_int["268443715"] = "Ethernet: Slot 1 Port 3"
+    name_phy_int["268443716"] = "Ethernet: Slot 1 Port 4"
+    name_phy_int["268443717"] = "Ethernet: Slot 1 Port 5"
+    name_phy_int["268443718"] = "Ethernet: Slot 1 Port 6"
+    name_phy_int["268476801"] = "TDM: Slot 1 Port 1"
 
+    ### --- MAPA RADIO PORTOVA ---
+    radio["268451905"] = "Radio: Slot 1 Port 1"
+    radio["268451906"] = "Radio: Slot 1 Port 2"
+    radio["268452033"] = "Radio: Slot 3 Port 1"
+    radio["268452034"] = "Radio: Slot 3 Port 2"
+    radio["268452097"] = "Radio: Slot 4 Port 1"
+    radio["268452098"] = "Radio: Slot 4 Port 2"
+    radio["268452161"] = "Radio: Slot 5 Port 1"
+    radio["268452162"] = "Radio: Slot 5 Port 2"
+    radio["268452163"] = "Radio: Slot 5 Port 3"
+    radio["268452164"] = "Radio: Slot 5 Port 4"
+    radio["268452225"] = "Radio: Slot 6 Port 1"
+    radio["268452226"] = "Radio: Slot 6 Port 2"
+    radio["268452227"] = "Radio: Slot 6 Port 3"
+    radio["268452228"] = "Radio: Slot 6 Port 4"
+    radio["268452289"] = "Radio: Slot 7 Port 1"
+    radio["268452353"] = "Radio: Slot 8 Port 1"
+    radio["268452417"] = "Radio: Slot 9 Port 1"
+    radio["268452481"] = "Radio: Slot 10 Port 1"
+
+}
+
+# Za svaki blok
+{
+    # Preskoci prazne blokove
+    if (length($0) == 0) {next}
+    ip = ""; hostname = ""; type = ""; type_name = ""
+
+    # Uzmi liniju koja sadrzi IP i ime
+    if (match($2, /\[([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\][ \t]+(.+)$/,m)) {
+        ip = m[1]
+        hostname = m[2]
+    }
+
+    # Sledeca linija $3 je type
+    type_name = $3
+    print ip "@" hostname "@" type_name "@@@@@@@@"
+
+
+    line = $5
+    while(match(line, /\.([0-9]+)[ ]*=[ ]*STRING[ ]*:[ ]*"([^"]+)"/, m)) {
+        id = m[1]
+        text = m[2]
+        if (id in name_phy_int) {
+            name = name_phy_int[id]
+        } 
+        #gsub(/^STRING: */, "", vrednost)
+        #gsub(/^"|"$/, "", vrednost)
+        print ip "@" hostname "@" type_name "@" name "@" text "@@@@@@"
+        line = substr(line, RSTART + RLENGTH)
+    }
+    line = $5
+    while(match(line, /\.([0-9]+)[ ]*=[ ]*"([^"]+)"/, m)) {
+        id = m[1]
+        text = m[2]
+        if (id in name_phy_int) {
+            name = name_phy_int[id]
+        } 
+        print ip "@" hostname "@" type_name "@" name "@" text "@@@@@@"
+        line = substr(line, RSTART + RLENGTH)
+    }
+
+
+    line = $7
+    while(match(line, /\.([0-9]+)[ ]*=[ ]*STRING[ ]*:[ ]*"([^"]+)"/, m)) {
+        id = m[1]
+        text = m[2] 
+        print ip "@" hostname "@" type_name "@@@Service ID:" id "@" text "@@@@" 
+        line = substr(line, RSTART + RLENGTH)
+    }
+    line = $7
+    while(match(line, /\.([0-9]+)[ ]*=[ ]*"([^"]+)"/, m)) {
+        id = m[1]
+        text = m[2]
+        print ip "@" hostname "@" type_name "@@@Service ID:" id "@" text "@@@@" 
+        line = substr(line, RSTART + RLENGTH)
+    }
+
+    line = $9
+    while(match(line, /\.([0-9]+)[ ]*=[ ]*STRING[ ]*:[ ]*"([^"]+)"/, m)) {
+        id = m[1]
+        text = m[2] 
+        print ip "@" hostname "@" type_name "@@@@@Service ID:" id "@" text "@@" 
+        line = substr(line, RSTART + RLENGTH)
+    }
+    line = $9
+    while(match(line, /\.([0-9]+)[ ]*=[ ]*"([^"]+)"/, m)) {
+        id = m[1]
+        text = m[2]
+        print ip "@" hostname "@" type_name "@@@@@Service ID:" id "@" text "@@" 
+        line = substr(line, RSTART + RLENGTH)
+    }
+
+    line = $11
+    while (match(line, /\.([0-9]+)[ ]*=[ ]*IpAddress[ ]*:[ ]*([0-9.]+)/, m)) {
+        id = m[1]
+        name = m[1]
+        if (id in radio) {
+            name = radio[id]
+        } 
+        text = m[2] 
+        print ip "@" hostname "@" type_name "@@@@@@@" name "@" text
+        line = substr(line, RSTART + RLENGTH)
+    }
+    line = $11
+    while (match(line, /\.([0-9]+)[ ]*=[ ]*([0-9.]+)/, m)) {
+        id = m[1]
+        name = m[1]
+        if (id in radio) {
+            name = radio[id]
+        } 
+        text = m[2] 
+        print ip "@" hostname "@" type_name "@@@@@@@" name "@" text
+        line = substr(line, RSTART + RLENGTH)
+    }
+
+    line = $11
+    # while (match(line, /\.([0-9]+)[ ]*=[ ]*STRING[ ]*:[ ]*([0-9.]+)/, m)) {
+    # id = m[1]
+    #     name = m[1]
+    #     if (id in radio) {
+    #         name = radio[id]
+    #     } 
+    #     text = m[2] 
+    #     print ip "@" hostname "@" type_name "@@@@@@@" name "@" text 
+    #     line = substr(line, RSTART + RLENGTH)
+    # }
+    
+    
+
+
+   
+    
+}
+' $REZULTAT >> $OUTPUT_FILE
+
+
+
+make_log "CSV generisan: $OUTPUT_FILE"
+
+make_log "ZAVRSENA SKRIPTA "
+echo "ZAVRSENA SKRIPTA "

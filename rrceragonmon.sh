@@ -114,6 +114,8 @@ for idx in "${!ip_array[@]}"; do
     # Hostname
     start_host=$(date +%s.%N)
     HOSTNAME=$(snmp_call "get" 2c "$COMMUNITY" "$ip" "$CERHOSTNAME" "" "hostname")
+    #CRLF token se sklanja
+    HOSTNAME="$(printf '%s' "$HOSTNAME" | tr -d '\r\n')"
     # Proveravamo da li je dostupan, ako nije nastavljamo sa drugom adresom
     if [[ -z "$HOSTNAME" ]]; then
         make_log "[$ip] NEDOSTUPAN! nema Hostname odgovora (${time_host}s)"
@@ -170,7 +172,7 @@ for idx in "${!ip_array[@]}"; do
 done
 
 # Obrisi prethodni rezultat ako postoji i dodaj header
-echo "IP, Hostname, Element type, Physical Interfaces, Physical Interfaces Description, Ethernet and TDM services, Ethernet and TDM services Description, Chassis configuration, Chassis configuration Description, Remote IP address, Remote IP address Description" > "$OUTPUT_FILE"
+echo "IP@ Hostname@ Element type@ Physical Interfaces@ Physical Interfaces Description@ Ethernet and TDM services@ Ethernet and TDM services Description@ Chassis configuration@ Chassis configuration Description@ Remote IP address@ Remote IP address Description" > "$OUTPUT_FILE"
 awk '
 BEGIN { 
     FS="\n"; 
